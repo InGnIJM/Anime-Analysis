@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "单张截图人物识别请求时序（V1.1）",
+    "locale": "zh-CN",
+    "output": "recognition-sequence-v1.1.html",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1320, 820]
+  },
+  "participants": [
+    { "id": "user", "type": "external", "label": "用户" },
+    { "id": "desktop", "type": "frontend", "label": "PySide6" },
+    { "id": "api", "type": "backend", "label": "FastAPI" },
+    { "id": "service", "type": "backend", "label": "识别服务" },
+    { "id": "opencv", "type": "backend", "label": "OpenCV" },
+    { "id": "detector", "type": "backend", "label": "人物检测器" },
+    { "id": "classifier", "type": "backend", "label": "YOLO-cls" },
+    { "id": "mapping", "type": "backend", "label": "映射与拒识" },
+    { "id": "sqlite", "type": "database", "label": "SQLite" }
+  ],
+  "segments": [
+    { "from": 150, "to": 285, "label": "输入与校验" },
+    { "from": 305, "to": 548, "label": "检测与姓名分类" },
+    { "from": 568, "to": 730, "label": "映射、留史与返回" }
+  ],
+  "messages": [
+    { "id": "select-image", "from": "user", "to": "desktop", "y": 185, "label": "选择或拖入截图" },
+    { "id": "post-recognition", "from": "desktop", "to": "api", "y": 230, "label": "POST /api/v1/recognitions", "variant": "emphasis" },
+    { "id": "validated-request", "from": "api", "to": "service", "y": 275, "label": "已校验文件 + request_id" },
+    { "id": "decode", "from": "service", "to": "opencv", "y": 325, "label": "解码、方向与色彩处理" },
+    { "id": "normalized-image", "from": "opencv", "to": "service", "y": 365, "label": "规范化 RGB 图像", "variant": "return" },
+    { "id": "detect-characters", "from": "service", "to": "detector", "y": 410, "label": "检测人物区域", "variant": "emphasis" },
+    { "id": "detected-boxes", "from": "detector", "to": "service", "y": 450, "label": "0..N 个框 + 置信度", "variant": "return" },
+    { "id": "classify-crops", "from": "service", "to": "classifier", "y": 495, "label": "逐框分类人物裁剪", "variant": "emphasis" },
+    { "id": "character-scores", "from": "classifier", "to": "service", "y": 535, "label": "人物 Top-3 概率", "variant": "return" },
+    { "id": "map-and-reject", "from": "service", "to": "mapping", "y": 585, "label": "人物 ID + 概率 + 阈值" },
+    { "id": "mapped-results", "from": "mapping", "to": "service", "y": 625, "label": "姓名 / 番剧 / unknown", "variant": "return" },
+    { "id": "persist", "from": "service", "to": "sqlite", "y": 665, "label": "事务写入记录与人物结果", "variant": "emphasis" },
+    { "id": "return-dto", "from": "service", "to": "api", "y": 665, "label": "RecognitionDTO", "variant": "return" },
+    { "id": "show-results", "from": "api", "to": "desktop", "y": 700, "label": "200 JSON / 标准错误", "variant": "return" },
+    { "id": "render-overlay", "from": "desktop", "to": "user", "y": 735, "label": "显示框、姓名、番剧与状态", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "desktop", "from": 220, "to": 740, "type": "frontend" },
+    { "participant": "api", "from": 230, "to": 705, "type": "backend" },
+    { "participant": "service", "from": 270, "to": 670, "type": "backend" },
+    { "participant": "opencv", "from": 320, "to": 370, "type": "backend" },
+    { "participant": "detector", "from": 405, "to": 455, "type": "backend" },
+    { "participant": "classifier", "from": 490, "to": 540, "type": "backend" },
+    { "participant": "mapping", "from": 580, "to": 630, "type": "backend" },
+    { "participant": "sqlite", "from": 660, "to": 682, "type": "database" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "多人处理", "items": ["检测器可以返回 0..N 个区域", "分类器按框独立给出人物候选", "DTO 保留每个人物的边界框"] },
+    { "dot": "rose", "title": "拒识与空结果", "items": ["低置信度人物输出 unknown", "没有人物时返回空 detections", "候选不得表述为确定真值"] },
+    { "dot": "violet", "title": "一致性", "items": ["姓名通过稳定 character_id 映射", "人物可对应多个候选作品", "结果与历史共用 request_id"] }
+  ]
+}

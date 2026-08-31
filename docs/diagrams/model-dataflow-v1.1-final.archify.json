@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "人物数据、训练与模型发布流（V1.1）",
+    "locale": "zh-CN",
+    "output": "model-dataflow-v1.1-final.html",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 650]
+  },
+  "stages": [
+    { "label": "数据源" },
+    { "label": "治理" },
+    { "label": "标注" },
+    { "label": "训练与校准" },
+    { "label": "验证与发布" }
+  ],
+  "nodes": [
+    { "id": "namedpilot", "type": "database", "label": "AOT 具名试点", "sublabel": "人物目录 + 动画截图", "stage": 0, "row": 0, "tag": "pilot" },
+    { "id": "screenshots", "type": "database", "label": "BangumiBase 与自有截图", "sublabel": "人物簇 + 剧集来源", "stage": 0, "row": 2, "tag": "formal", "width": 152 },
+    { "id": "audit", "type": "security", "label": "来源与许可审计", "sublabel": "有效性 / SFW / 权利", "stage": 1, "row": 0, "tag": "gate" },
+    { "id": "split", "type": "backend", "label": "去重与分组切分", "sublabel": "source_group + pHash", "stage": 1, "row": 2, "tag": "70/15/15" },
+    { "id": "mapping", "type": "backend", "label": "人物簇命名复核", "sublabel": "character_id / 别名", "stage": 2, "row": 0, "tag": "双人复核" },
+    { "id": "crops", "type": "database", "label": "人物裁剪与清单", "sublabel": "bbox / anime_id / character_id", "stage": 2, "row": 2, "tag": "versioned", "width": 142 },
+    { "id": "detectorcheck", "type": "backend", "label": "检测器验证或微调", "sublabel": "Recall / mAP50", "stage": 3, "row": 0, "tag": "500 frames" },
+    { "id": "classtrain", "type": "backend", "label": "YOLO-cls 人物训练", "sublabel": "train + val / best.pt", "stage": 3, "row": 2, "tag": "closed set" },
+    { "id": "frozen", "type": "database", "label": "冻结截图测试集", "sublabel": "真实动画 / unknown", "stage": 3, "row": 3, "tag": "test", "width": 140 },
+    { "id": "release", "type": "database", "label": "模型发布包", "sublabel": "权重 / 映射 / 阈值 / 指标", "stage": 4, "row": 2, "tag": "auditable", "width": 158 }
+  ],
+  "flows": [
+    { "id": "pilot-audit", "from": "namedpilot", "to": "audit", "label": "具名截图", "classification": "试点数据", "variant": "emphasis" },
+    { "id": "screenshots-split", "from": "screenshots", "to": "split", "label": "截图 + 来源组", "classification": "正式数据", "variant": "emphasis" },
+    { "id": "audit-mapping", "from": "audit", "to": "mapping", "label": "许可通过", "classification": "受控输入" },
+    { "id": "split-crops", "from": "split", "to": "crops", "label": "无泄漏划分", "classification": "清单 + 图像", "variant": "emphasis", "labelDy": 38 },
+    { "id": "mapping-crops", "from": "mapping", "to": "crops", "label": "稳定人物标签", "classification": "人工审核", "variant": "security", "labelDx": 54 },
+    { "id": "crops-detector", "from": "crops", "to": "detectorcheck", "label": "检测验证集", "classification": "检测评估", "labelDy": -42 },
+    { "id": "crops-classifier", "from": "crops", "to": "classtrain", "label": "train + val", "classification": "分类训练", "variant": "emphasis", "route": "straight", "labelDy": 38 },
+    { "id": "split-frozen", "from": "split", "to": "frozen", "label": "锁定 test", "classification": "一次性评估", "variant": "dashed", "route": "bottom-channel", "channelY": 575 },
+    { "id": "detector-release", "from": "detectorcheck", "to": "release", "label": "检测指标", "classification": "版本化产物", "labelDy": -36 },
+    { "id": "classifier-release", "from": "classtrain", "to": "release", "label": "best.pt + 映射", "classification": "版本化产物", "variant": "emphasis", "route": "straight", "labelAt": [820, 430] },
+    { "id": "test-release", "from": "frozen", "to": "release", "label": "独立测试 + 阈值", "classification": "发布门禁", "variant": "dashed", "route": "bottom-channel", "channelY": 600, "labelDy": 24 }
+  ]
+}

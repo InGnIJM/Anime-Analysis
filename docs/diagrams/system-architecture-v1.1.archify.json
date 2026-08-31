@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "动漫番剧人物识别系统总体架构（V1.1）",
+    "locale": "zh-CN",
+    "output": "system-architecture-v1.1.html",
+    "quality_profile": "showcase",
+    "viewBox": [1320, 780]
+  },
+  "components": [
+    { "id": "user", "type": "external", "label": "本机用户", "sublabel": "导入截图 / 查看人物", "pos": [20, 300], "size": [120, 64] },
+    { "id": "desktop", "type": "frontend", "label": "PySide6 桌面端", "sublabel": "预览 / 状态 / 检测框", "pos": [200, 300], "size": [145, 64] },
+    { "id": "api", "type": "backend", "label": "FastAPI 本地服务", "sublabel": "DTO / 校验 / 请求追踪", "pos": [410, 300], "size": [150, 64] },
+    { "id": "service", "type": "backend", "label": "人物识别服务", "sublabel": "编排 / 阈值 / 聚合", "pos": [625, 300], "size": [150, 64] },
+    { "id": "preprocess", "type": "backend", "label": "OpenCV 预处理", "sublabel": "解码 / 方向 / 色彩", "pos": [625, 115], "size": [150, 64] },
+    { "id": "detector", "type": "backend", "label": "动漫人物检测器", "sublabel": "人脸 / 头部 / 人物框", "pos": [850, 115], "size": [150, 64] },
+    { "id": "classifier", "type": "backend", "label": "YOLO-cls 姓名分类", "sublabel": "逐框 Top-3 / 置信度", "pos": [1075, 115], "size": [170, 64] },
+    { "id": "mapping", "type": "backend", "label": "人物-番剧映射", "sublabel": "unknown / 候选作品", "pos": [1075, 300], "size": [170, 64] },
+    { "id": "sqlite", "type": "database", "label": "SQLite", "sublabel": "人物 / 番剧 / 历史", "pos": [1075, 485], "size": [170, 64] },
+    { "id": "dataset", "type": "database", "label": "版本化人物数据集", "sublabel": "AOT / BangumiBase / 自有截图", "pos": [225, 565], "size": [190, 68] },
+    { "id": "training", "type": "backend", "label": "离线训练与评估", "sublabel": "审计 / 切分 / 校准", "pos": [520, 565], "size": [180, 68] },
+    { "id": "modelrepo", "type": "database", "label": "模型与映射仓库", "sublabel": "detector / best.pt / maps", "pos": [850, 485], "size": [175, 68] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Windows 单机应用", "wraps": ["desktop", "api", "service", "preprocess", "detector", "classifier", "mapping", "sqlite", "modelrepo"], "pad": 28 },
+    { "kind": "region", "label": "项目维护与训练环境", "wraps": ["dataset", "training"], "pad": 24 }
+  ],
+  "connections": [
+    { "id": "user-import", "from": "user", "to": "desktop", "label": "导入图片", "variant": "emphasis", "labelDy": -26 },
+    { "id": "desktop-api", "from": "desktop", "to": "api", "label": "HTTP + 图像", "variant": "emphasis", "labelDy": -26 },
+    { "id": "api-service", "from": "api", "to": "service", "label": "已校验请求", "labelDy": -26 },
+    { "id": "service-preprocess", "from": "service", "to": "preprocess", "label": "规范化", "labelDx": -54 },
+    { "id": "preprocess-detector", "from": "preprocess", "to": "detector", "label": "RGB 图像", "variant": "emphasis", "labelDy": -24 },
+    { "id": "detector-classifier", "from": "detector", "to": "classifier", "label": "人物裁剪", "variant": "emphasis", "labelDy": -24 },
+    { "id": "classifier-mapping", "from": "classifier", "to": "mapping", "label": "人物概率", "labelAt": [1214, 193] },
+    { "id": "mapping-sqlite", "from": "mapping", "to": "sqlite", "label": "结果留史", "labelAt": [1214, 378] },
+    { "id": "dataset-training", "from": "dataset", "to": "training", "label": "分组数据 + 人名标签", "variant": "emphasis", "labelDy": -26 },
+    { "id": "training-modelrepo", "from": "training", "to": "modelrepo", "label": "权重 + 映射 + 阈值", "variant": "dashed", "labelDy": -26 },
+    { "id": "modelrepo-service", "from": "modelrepo", "to": "service", "label": "加载版本化产物", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "运行边界", "items": ["桌面端不直接访问 SQLite 或模型", "FastAPI 仅监听 127.0.0.1", "原图默认不持久化"] },
+    { "dot": "emerald", "title": "识别主链路", "items": ["先检测人物区域，再逐框识别人名", "一个画面可返回多名人物", "低置信度统一返回 unknown"] },
+    { "dot": "violet", "title": "模型治理", "items": ["检测器、分类器、映射与阈值独立版本化", "按剧集和重复簇防止数据泄漏", "模型包通过门禁后才能激活"] }
+  ]
+}
